@@ -1,0 +1,202 @@
+# CareerPilot
+
+CareerPilot 是面向实习和校招求职者的 AI 模拟面试应用。系统结合个人简历与岗位描述生成问题，通过语音作答、上下文追问、证据反馈和两阶段复练，帮助用户回顾表达并检验改进。
+
+## 主要功能
+
+- **账号与资料**：邮箱验证码注册、登录、找回密码、改密、换绑、自定义头像、退出和永久注销。
+- **材料管理**：上传文字型 PDF、DOCX、TXT 简历，提取原文并校对字段；粘贴岗位 JD，区分明确要求和推断，保存内容版本与自定义名称。
+- **模拟面试**：选择 3、5 或 8 道主问题，结合项目背景、实际经历、岗位要求与假设情境出题；每个主问最多两次追问。
+- **语音与恢复**：浏览器录音、本机 Whisper 转写、Windows 中文播报；正式回答只读并自动提交，语音故障可用键盘；刷新、中途退出后可继续原训练。
+- **报告与复练**：引用实际回答提供六维反馈、证据覆盖率和改进项；通过原题重答与场景变式检验改进，保留来源问答。
+- **历史与管理**：按岗位和版本查看记录与可比趋势；管理员可管理账号状态、查看任务诊断和模型费用。
+- **运行维护**：预算预留与核账、私有材料存储、到期清理、每日备份和受控恢复。
+
+支持后端开发、前端开发、软件测试、AI 产品经理和 AI 应用开发五类岗位。软件测试细分功能测试、测试开发；AI 应用开发细分大模型应用、Agent 应用，共七个评分方向。
+
+## 技术栈
+
+| 部分 | 技术 |
+| --- | --- |
+| 前端 | Vue 3、TypeScript、Vite、Vue Router |
+| 后端 | Python 3.12、FastAPI、SQLAlchemy、Alembic |
+| 数据库 | MySQL 8.0 |
+| 模型 | DeepSeek Flash 非思考模式 |
+| 本机语音 | faster-whisper small、Windows SAPI |
+| 邮件验收 | Mailpit |
+| 测试 | pytest、Playwright、Ruff、vue-tsc |
+
+## 环境要求
+
+完整语音功能和一键启动脚本面向 Windows，浏览器使用 Chrome 或 Edge。需要 Python 3.12、Node.js 22.12 或更新的兼容版本、MySQL 8.0 和 Mailpit。依赖锁定文件位于前端和后端目录。
+
+当前提供本机运行方式。仓库不包含数据库、上传文件、模型权重、用户问答、密钥、日志或运行备份。首次运行需要安装依赖、配置数据库并准备语音模型。
+
+## 安装与配置
+
+下面的 CMD 命令均从仓库根目录执行。
+
+### 1. Python 与前端依赖
+
+可使用已有的 Python 3.12 环境，或创建 Conda 环境：
+
+```cmd
+conda create -n careerpilot python=3.12
+conda activate careerpilot
+python -m pip install --target backend/.deps -r backend/requirements.lock
+python -m pip install --target backend/.speech-deps -r backend/speech-requirements.lock
+cd frontend
+npm ci
+cd ..
+```
+
+`python` 必须指向安装依赖时使用的解释器。双击 CMD 启动入口时，可通过 `CAREERPILOT_PYTHON` 指定该解释器的完整路径；否则优先使用仓库 `.venv`，再使用 PATH 中的 `python`。
+
+### 2. 初始化本机配置与数据库
+
+先启动 MySQL，然后执行：
+
+```cmd
+python backend/manage.py init-env
+python backend/setup_mysql.py --new-database
+python backend/manage.py migrate
+```
+
+`init-env` 创建带随机认证密钥的 `backend/.env`，不会覆盖已有文件。数据库配置程序交互读取本机管理员凭据，为项目创建独立库与专用账号；已有库和账号不会被覆盖。也可在 `.env` 中手动配置已有的专用项目连接。
+
+`.env.example` 只包含占位值。不要提交真实 `.env`，也不要将数据库管理员账号用作应用账号。
+
+### 3. 邮件、模型与语音
+
+将 Mailpit 加入 PATH，或设置 `CAREERPILOT_MAILPIT` 为其可执行文件路径。默认 SMTP 为 `127.0.0.1:1025`，收件箱为 `http://127.0.0.1:8025/`。验证码留在本机，不发送到外部邮箱。
+
+在 `backend/.env` 中配置 `CAREERPILOT_DEEPSEEK_API_KEY`。材料整理、出题、追问、报告及复练会产生模型费用；没有密钥时不会伪造生成结果。
+
+价格核对日期过旧时会阻止新增付费调用。首次配置需核对供应商计价，然后执行：
+
+```cmd
+python backend/manage.py verify-pricing --help
+```
+
+按实际核对结果填写 `--hit`、`--miss`、`--output`（元/百万 Token）与 `--date`。此命令只保存本地价格记录，不调用模型。项目累计测试上限为 20 元，每自然月上限为 50 元；失败请求的实际费用也保留在台账中。
+
+下载公开离线语音模型：
+
+```cmd
+python backend/scripts/prepare_speech.py
+```
+
+模型存放在 `backend/data/models/whisper-small/`，不进入版本控制。中文播报需要 Windows 中可用的 SAPI 语音。纯文字流程可以在语音不可用时通过明确的故障备用入口使用。
+
+### 4. 启动
+
+```cmd
+启动CareerPilot.cmd
+```
+
+一键入口检查 MySQL、数据库迁移、Mailpit、后端和前端，复用已就绪服务。默认自动启动的 MySQL 服务名为 `MYSQL80`；其他服务名请先手动启动。Node.js 需在 PATH 中，或通过 `CAREERPILOT_NODE` 指定。服务日志写入 `.cache/services/`。
+
+| 地址 | 用途 |
+| --- | --- |
+| http://127.0.0.1:5173/ | 应用 |
+| http://127.0.0.1:8000/docs | 本机 API 文档 |
+| http://127.0.0.1:8025/ | 验证码收件箱 |
+
+只检查服务而不启动进程：
+
+```cmd
+启动CareerPilot.cmd --check --no-browser
+```
+
+首次使用需注册普通账号。管理员通过以下本机命令单独创建，无默认管理员口令：
+
+```cmd
+python backend/manage.py create-admin
+```
+
+## 使用流程
+
+1. 注册并登录，在 Mailpit 中读取对应邮箱和用途的验证码。
+2. 上传自己的文字型简历，核对原文与结构化字段并确认。
+3. 粘贴岗位 JD，补全必要字段，明确是否采用推断后保存。
+4. 选择材料、题量并确认使用，开始面试。
+5. 结束后查看报告，从具体改进项进入原题复练和变式验证。
+
+正式面试语音转写成功后不可改字并自动提交；复练允许修改转写后手动提交。单次录音最长 3 分钟、音频不超过 10MB，转写处理上限 120 秒。成功报告固定保存，重复打开不会重新生成；允许的失败重试由用户手动触发。
+
+评分的维度、分档、权重、N/A 与综合分条件见[评分说明](docs/评分说明.md)。
+
+## 项目结构
+
+```text
+CareerPilot/
+├─ backend/
+│  ├─ app/                   API、认证、材料、训练、评分与维护
+│  ├─ migrations/            数据库迁移
+│  ├─ scripts/               本机启动、语音与测试工具
+│  ├─ tests/                 隔离测试及合成数据
+│  └─ .env.example           配置模板
+├─ frontend/
+│  ├─ src/                   页面、状态、接口与静态素材
+│  ├─ public/                图标许可与公共资源
+│  └─ tests/                 浏览器检查
+├─ docs/评分说明.md
+├─ 启动CareerPilot.cmd
+├─ 备份CareerPilot.cmd
+└─ 恢复CareerPilot备份.cmd
+```
+
+## 构建与测试
+
+前端构建：
+
+```cmd
+cd frontend
+npm run build
+cd ..
+```
+
+后端隔离检查不需要真实模型调用：
+
+```cmd
+python backend/manage.py test
+python backend/manage.py lint
+```
+
+浏览器检查需要已安装的 Chrome：
+
+```cmd
+cd frontend
+npm run test:e2e
+npm run test:ui
+```
+
+`test:e2e` 使用显式预览模式和合成数据；`test:ui` 使用请求拦截检查正式页面的管理详情、头像、评分说明和 JD 重命名。这些测试不证明真实模型的专业准确率或真人识别质量。
+
+服务联调需要本机 MySQL、迁移与 Mailpit。测试工具只创建和清理自身随机测试账号，不应指向生产数据库。模型和转写使用测试替身时，先在另一窗口启动：
+
+```cmd
+python backend/tests/serve_browser.py --offline-fixtures
+```
+
+再执行 `frontend` 中的 `npm run test:service`。测试 API 使用 8001 端口和独立 Cookie，前端使用 5175 端口；配置默认要求专用本机库 `careerpilot_app`。`CAREERPILOT_PYTHON` 可指定测试辅助程序使用的 Python。
+
+## 数据与运行维护
+
+- 简历和训练记录仅本人可读；管理员只查看用户元信息、运行诊断和费用，不能读取他人材料或问答正文。
+- 当前账号正常存续时持续保留业务数据；删除简历后停止新使用和下载，源材料在 24 小时内清理，已有训练保留必要快照。
+- 永久注销立即撤销登录，个人数据保留 30 天后清理；匿名费用台账保留。同邮箱可注册新账号，旧数据不继承。
+- 原始录音仅临时用于转写和当前页故障重试，不进入业务备份。
+- 每日备份数据库和材料原文件，每份保留 7 天，默认位于仓库 `backups/`；停机期间的清理与备份在下次启动补做。
+
+本机入口为 `备份CareerPilot.cmd` 和 `恢复CareerPilot备份.cmd`。恢复需先停止 API、校验目标库并明确确认覆盖；恢复前会备份当前库，并应用最新费用和账号控制记录。备份、维护保护记录及 `.env` 需要单独保管，不应提交到 GitHub。
+
+更多命令见[后端命令说明](backend/README.md)。
+
+## 适用范围与限制
+
+当前面向 Windows 本机使用。扫描 PDF 的 OCR、真实外部邮件、公网部署、视频面试、招聘推荐、JD 删除和历史跨评分版本重评未提供。
+
+模型输出会经过结构、材料依据、逐字引用、维度和费用校验，但校验不能保证所有专业判断正确。出题自然度、不同岗位的评分合理性、真人口音和噪声下的识别体验仍需实际评估，不应将分数视为录用结论。
+
+第三方组件与静态图标的许可信息见[第三方声明](THIRD_PARTY_NOTICES.md)。
