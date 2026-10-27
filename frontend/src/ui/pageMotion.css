@@ -1,0 +1,53 @@
+.glass-filter-definitions {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.application-shell {
+  position: relative;
+}
+.entry-viewport {
+  position: relative;
+  min-height: 100svh;
+  overflow: clip;
+}
+.entry-snapshots {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: clip;
+  pointer-events: none;
+}
+.entry-snapshot {
+  pointer-events: none;
+  will-change: transform;
+}
+.route-viewport {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: clip;
+}
+.route-snapshots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: clip;
+}
+.route-snapshot {
+  pointer-events: none;
+  will-change: transform;
+}
+.navigation-space {
+  height: var(--nav-height);
+}
+.persistent-navigation {
+  position: absolute;
+  z-index: 10;
+  left: 5.5555555%;
+  bottom: max(16px, 2.666667svh);
+  width: 88.888889%;
+}

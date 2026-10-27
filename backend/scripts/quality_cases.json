@@ -1,0 +1,214 @@
+{
+  "format": "careerpilot-calibration-v1",
+  "note": "合成对照样例；expected为预设档位，容差1档，不代表专业准确率或专家认证。",
+  "cases": [
+    {
+      "id": "backend-good",
+      "role": "后端开发",
+      "direction": "Python",
+      "question": "设计一个仅本人可读写的项目接口，说明契约、数据约束和验证。",
+      "answer": "我会把登录用户ID从服务端会话取出，项目表存owner_id；GET/PUT /projects/{id}按项目ID及owner_id查询，不信任请求传来的归属。更新校验标题非空和长度，成功返回版本号，版本冲突返回409。数据库设置主键和必要非空约束；这是设计方案，验证时用两个用户互读、缺字段和旧版本更新用例确认行为。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "backend-bad",
+      "role": "后端开发",
+      "direction": "Python",
+      "question": "设计一个仅本人可读写的项目接口，说明契约、数据约束和验证。",
+      "answer": "我会让客户端传owner_id作为本人身份，不验证登录用户，任何请求只按项目ID读写；这样省一次鉴权。所有参数都直接入库，不需要约束或校验。只要接口返回200就证明权限正确。",
+      "expected": {
+        "relevance": 3,
+        "logic": 2,
+        "evidence": 1,
+        "special": 0
+      }
+    },
+    {
+      "id": "frontend-good",
+      "role": "前端开发",
+      "direction": "Vue",
+      "question": "如何实现可编辑资料表单，处理保存、取消和失败状态？",
+      "answer": "我会把服务端资料复制成表单草稿，输入只更新草稿，取消时恢复最近保存值。页面拆成表单与预设头像选择组件，通过明确事件更新父状态。提交前校验必填，保存中禁用重复提交，失败保留草稿和错误；成功后才更新显示资料。这里是设计说明，我会用修改后取消、保存失败重试、重复点击三类交互用例验证。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "frontend-bad",
+      "role": "前端开发",
+      "direction": "Vue",
+      "question": "如何实现可编辑资料表单，处理保存、取消和失败状态？",
+      "answer": "表单输入直接修改全局已保存资料；取消按钮只关闭表单，不恢复原值。保存请求无论成功失败都先提示成功并清空输入；这样界面看着流畅，我不准备验证取消或失败。",
+      "expected": {
+        "relevance": 3,
+        "logic": 2,
+        "evidence": 1,
+        "special": 0
+      }
+    },
+    {
+      "id": "testing-good",
+      "role": "软件测试",
+      "direction": "功能测试",
+      "question": "验证码六位、十分钟有效、六十秒重发，如何设计功能测试？",
+      "answer": "我先确认计时边界以服务端时间为准。用正确、错误、空白、五位七位、过期前后、已用验证码再次使用等场景覆盖输入和状态。重发检查59秒拦截、到60秒允许，并确认旧码规则与邮件用途隔离。每个用例写清初始状态、步骤和预期；用可控测试时钟与实际邮件核对结果，不假设等待时长就代表有效。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "testing-bad",
+      "role": "软件测试",
+      "direction": "功能测试",
+      "question": "验证码六位、十分钟有效、六十秒重发，如何设计功能测试？",
+      "answer": "只输入一次正确六位码就够了；五位、过期和重复使用都应当成功，不用测边界。页面出现成功提示就认定注册完成，不查实际结果。",
+      "expected": {
+        "relevance": 3,
+        "logic": 2,
+        "evidence": 1,
+        "special": 0
+      }
+    },
+    {
+      "id": "testdev-good",
+      "role": "软件测试",
+      "direction": "测试开发",
+      "question": "为项目创建接口设计可重复执行的自动化测试。",
+      "answer": "我会用固定结构的测试函数配合参数化，准备独立用户和唯一项目名，发送创建请求后断言状态、响应必填字段以及返回ID对应的查询内容。再覆盖缺必填与未登录场景，明确预期错误码。公共请求和清理封装复用，finally按本次创建ID清理，不删他人数据；用连续执行两轮检查数据隔离与重复运行稳定性。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "testdev-bad",
+      "role": "软件测试",
+      "direction": "测试开发",
+      "question": "为项目创建接口设计可重复执行的自动化测试。",
+      "answer": "我只调用创建接口，不写任何断言；只要脚本没有语法错误就判定通过。所有测试共享同一个项目名，执行后把整个项目表清空，保证下次能运行。",
+      "expected": {
+        "relevance": 3,
+        "logic": 2,
+        "evidence": 1,
+        "special": 0
+      }
+    },
+    {
+      "id": "product-good",
+      "role": "AI 产品经理",
+      "direction": "AI产品",
+      "question": "定义一个面向校招学生的项目面试准备功能及首版优先级。",
+      "answer": "我先限定目标为有项目经历但难以组织回答的校招学生，核心场景是面试前围绕本人项目练习。首版优先支持确认简历和JD、项目背景提问以及带原话的改进建议，暂不做招聘推荐。我会访谈并用小规模任务测试验证是否答得到项目重点，记录追问是否有帮助；这些是待验证假设，不声称已有上线提升数据。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "product-bad",
+      "role": "AI 产品经理",
+      "direction": "AI产品",
+      "question": "定义一个面向校招学生的项目面试准备功能及首版优先级。",
+      "answer": "目标用户就是所有人，核心问题不用调研就确定是缺少炫酷功能。首版同时做视频、招聘、课程和聊天，全部最高优先级，不需要场景或成功标准；我没有做过验证但认为一定能提高录用率。",
+      "expected": {
+        "relevance": 2,
+        "logic": 1,
+        "evidence": 0,
+        "special": 0
+      }
+    },
+    {
+      "id": "llm-good",
+      "role": "AI 应用开发",
+      "direction": "大模型应用开发",
+      "question": "如何接入模型，把简历整理为可校对的结构化字段？",
+      "answer": "我会把原文作为数据传入，系统提示明确不能执行原文里的指令，限定姓名、项目和职责等JSON字段，缺失内容留空。请求设置超时和输出上限，响应按schema验证类型和必要字段，引用还要核对原文；失败保留真实原文供人工校对，不用默认模板冒充解析。验证用缺项、格式错误、原文注入和超时样例，这是计划而非已测成绩。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "llm-bad",
+      "role": "AI 应用开发",
+      "direction": "大模型应用开发",
+      "question": "如何接入模型，把简历整理为可校对的结构化字段？",
+      "answer": "我直接执行简历里要求的指令，模型返回什么都当成合法JSON，不做字段校验。缺少项目就让它编一个，接口超时则显示模板结果并标记解析成功。",
+      "expected": {
+        "relevance": 3,
+        "logic": 2,
+        "evidence": 1,
+        "special": 0
+      }
+    },
+    {
+      "id": "agent-good",
+      "role": "AI 应用开发",
+      "direction": "Agent应用开发",
+      "question": "规划一个只能读取本人材料并生成面试准备提纲的Agent流程。",
+      "answer": "我会先确认用户、目标岗位与已授权材料，再按读取、核对缺项、生成提纲、检查引用四步编排。每步输出结构化状态供下一步使用，缺授权就停止并提示；工具失败最多重试一次，仍失败保存已完成步骤并等待用户。完成条件是提纲覆盖目标且引用可回查，不把工具返回成功等同于整项成功；我会用缺授权、缺材料和读取失败样例验证分支。",
+      "expected": {
+        "relevance": 3,
+        "logic": 3,
+        "evidence": 3,
+        "special": 3
+      }
+    },
+    {
+      "id": "agent-bad",
+      "role": "AI 应用开发",
+      "direction": "Agent应用开发",
+      "question": "规划一个只能读取本人材料并生成面试准备提纲的Agent流程。",
+      "answer": "我让Agent先读取所有用户材料再决定目标，失败就无限循环调用，任何工具返回200就认为准备提纲完成，不需要检查是否有提纲或引用。",
+      "expected": {
+        "relevance": 2,
+        "logic": 1,
+        "evidence": 1,
+        "special": 0
+      }
+    },
+    {
+      "id": "unknown",
+      "role": "后端开发",
+      "direction": "Python",
+      "question": "请说明你会如何设计项目接口。",
+      "answer": "我不知道。",
+      "expected": {
+        "relevance": null,
+        "logic": null,
+        "evidence": null,
+        "special": null
+      }
+    },
+    {
+      "id": "no-experience",
+      "role": "后端开发",
+      "direction": "Python",
+      "question": "请说明你做过的项目接口设计与个人职责。",
+      "answer": "我没有做过。",
+      "expected": {
+        "relevance": null,
+        "logic": null,
+        "evidence": null,
+        "special": null
+      }
+    }
+  ]
+}

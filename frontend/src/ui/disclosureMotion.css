@@ -1,0 +1,143 @@
+/* Keep native select semantics and keyboard handling; animate the browser picker. */
+@supports (appearance: base-select) {
+  .home-page select,
+  .home-page select::picker(select) {
+    appearance: base-select;
+  }
+  .home-page select {
+    align-items: center;
+    gap: 10px;
+  }
+  .home-page select::picker-icon {
+    color: #7388ae;
+    transition: rotate 350ms var(--ease-fluid);
+  }
+  .home-page select:open::picker-icon {
+    rotate: 180deg;
+  }
+  .home-page select::picker(select) {
+    margin-block-start: 6px;
+    padding: 6px;
+    border: 1px solid #ffffffdb;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ffffffed, #eff5ffe8);
+    box-shadow:
+      0 12px 30px #37588c24,
+      inset 0 1px 0 #fff;
+    backdrop-filter: blur(5px) saturate(145%);
+    color: #344764;
+    max-block-size: min(360px, 45svh);
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.96);
+    transform-origin: top center;
+    transition:
+      opacity 220ms ease,
+      transform 350ms var(--ease-fluid),
+      display 350ms allow-discrete,
+      overlay 350ms allow-discrete;
+  }
+  .home-page select:open::picker(select) {
+    opacity: 1;
+    transform: none;
+  }
+  @starting-style {
+    .home-page select:open::picker(select) {
+      opacity: 0;
+      transform: translateY(-8px) scaleY(0.96);
+    }
+  }
+  .home-page select option {
+    padding: 9px 12px;
+    min-block-size: 34px;
+    border-radius: 7px;
+    color: #526786;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
+  }
+  .home-page select option:checked {
+    background: #e6efffa3;
+    color: #4f75cc;
+  }
+  .home-page select option:hover {
+    background: #e5efffb3;
+  }
+  .home-page select option:disabled {
+    color: #a0aec2;
+  }
+  .home-page select option::checkmark {
+    color: #5b80e5;
+  }
+}
+@supports (interpolate-size: allow-keywords) {
+  .home-page details {
+    interpolate-size: allow-keywords;
+  }
+  .home-page details::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      block-size 420ms var(--ease-fluid),
+      opacity 260ms ease,
+      content-visibility 420ms allow-discrete;
+  }
+  .home-page details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+.menu-pop-enter-active {
+  transition:
+    opacity 200ms ease,
+    transform 320ms var(--ease-fluid);
+}
+.menu-pop-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 240ms var(--ease-fluid);
+  pointer-events: none;
+}
+.menu-pop-enter-from,
+.menu-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-7px) scale(0.97);
+}
+.collapse-chevron {
+  transition: transform 420ms var(--ease-fluid);
+}
+.collapse-chevron.open {
+  transform: rotate(180deg);
+}
+.modal-motion-enter-active,
+.modal-motion-leave-active {
+  transition: opacity 220ms ease;
+}
+.modal-motion-enter-from,
+.modal-motion-leave-to {
+  opacity: 0;
+}
+.modal-motion-leave-active {
+  pointer-events: none;
+}
+.modal-motion-leave-active .ui-modal {
+  animation: none;
+  transition: transform 220ms var(--ease-fluid);
+}
+.modal-motion-leave-to .ui-modal {
+  transform: translateY(8px) scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-page select::picker(select),
+  .home-page select::picker-icon,
+  .home-page select option,
+  .home-page details::details-content,
+  .menu-pop-enter-active,
+  .menu-pop-leave-active,
+  .modal-motion-enter-active,
+  .modal-motion-leave-active,
+  .modal-motion-leave-active .ui-modal,
+  .collapse-chevron {
+    transition: none !important;
+  }
+}

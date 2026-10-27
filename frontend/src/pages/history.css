@@ -1,0 +1,239 @@
+.history-layout {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 44.117647% 52.205882%;
+  gap: 3.676471%;
+}
+.trend-panel {
+  padding: 16px 26px 10px;
+  border-radius: 24px;
+}
+.trend-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex: none;
+}
+.trend-heading h2 {
+  font-size: var(--ui-title);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.trend-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+@media (max-width: 1200px) {
+  .trend-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+}
+.history-filters {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 0.88em;
+}
+.history-filters label {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #8b98ad;
+  white-space: nowrap;
+}
+.history-filters select {
+  border: 1px solid #e0e6f0;
+  border-radius: 7px;
+  height: 34px;
+  background: white;
+  padding: 0 9px;
+  font: inherit;
+  color: #667895;
+  max-width: 240px;
+}
+.chart-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #9aa6b8;
+  font-size: 0.8em;
+  margin-top: 14px;
+  flex: none;
+}
+.chart-legend {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.chart-legend button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #8292ad;
+  font: inherit;
+}
+.chart-legend button.disabled {
+  opacity: 0.35;
+}
+.chart-legend i {
+  height: 3px;
+  width: 18px;
+  background: #5b80e5;
+  display: block;
+  border-radius: 2px;
+}
+.chart-legend i.mint {
+  background: #72b9a5;
+}
+.trend-chart {
+  flex: 1;
+  min-height: 0;
+  margin-top: 7px;
+}
+.trend-chart svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.trend-chart text {
+  font:
+    10px "Microsoft YaHei",
+    sans-serif;
+  fill: #9aa6b8;
+}
+.trend-chart .empty-state {
+  min-height: 0;
+  gap: 10px;
+  font-size: 0.95em;
+}
+.trend-foot {
+  display: flex;
+  justify-content: space-between;
+  color: #a1aabd;
+  font-size: 0.76em;
+  flex: none;
+  margin-top: 4px;
+}
+.history-records {
+  border-radius: 24px;
+}
+.history-record-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  min-height: 52px;
+}
+.history-record-heading .ui-tabs {
+  border: 0;
+  height: 52px;
+  font-size: 0.95em;
+  padding: 0 26px;
+  gap: 24px;
+}
+.history-record-heading .ui-tabs button > span {
+  margin-left: 9px;
+  color: #9aa6b8;
+  font-size: 0.8em;
+  font-weight: 400;
+}
+.history-record-heading > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-right: 26px;
+  font-size: 0.8em;
+  color: #9aa6b8;
+}
+.history-record-heading .ui-select {
+  font-size: inherit;
+  min-height: 30px;
+}
+.history-grid {
+  grid-template-columns:
+    minmax(0, 3fr) minmax(0, 1.65fr) minmax(0, 0.75fr)
+    minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 12px;
+}
+.history-records .data-head {
+  min-height: 32px;
+}
+.history-rows {
+  flex: 1;
+}
+.history-records .data-row {
+  min-height: calc((var(--workspace-height) * 0.52205882 - 134px) / 3);
+  font-size: 0.88em;
+}
+.history-row-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.history-row-title > svg {
+  color: #8ba0c4;
+  flex: none;
+}
+.history-row-title > div {
+  min-width: 0;
+}
+.history-row-title strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-row-title small {
+  font-size: 0.83em;
+}
+.history-score {
+  font-size: 1.2em;
+  font-weight: 600 !important;
+}
+.history-records .list-footer {
+  min-height: 48px;
+  font-size: 0.8em;
+}
+.history-rows .empty-state {
+  min-height: 70px;
+}
+.history-grid > .text-button {
+  justify-content: flex-end;
+}
+@media (max-width: 1200px) {
+  .history-filters {
+    gap: 10px;
+    font-size: 12px;
+  }
+  .history-filters label {
+    gap: 5px;
+  }
+  .history-filters select {
+    max-width: 190px;
+    padding: 0 6px;
+  }
+  .trend-panel {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .history-grid {
+    padding: 0 22px;
+    gap: 9px;
+    grid-template-columns: 2.5fr 1.6fr 0.7fr 0.8fr 0.9fr 1.1fr;
+  }
+  .history-record-heading .ui-tabs {
+    gap: 18px;
+    padding-left: 22px;
+  }
+  .history-record-heading > div:last-child {
+    gap: 10px;
+    padding-right: 22px;
+  }
+}

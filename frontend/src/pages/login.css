@@ -1,0 +1,440 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #e8edf5;
+  color: #24344d;
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+}
+button,
+input {
+  font-family: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #9eb4e9;
+  outline-offset: 4px;
+}
+.auth-page {
+  height: 100svh;
+  min-height: 760px;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #f5f7fb;
+}
+.auth-scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+.auth-page[data-state="login"] .auth-scene {
+  pointer-events: auto;
+}
+.topbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 88px;
+  background: white;
+  border-bottom: 1px solid #e0e7f2;
+}
+.brand {
+  position: absolute;
+  left: 56px;
+  top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+}
+.header-logo {
+  width: 56px;
+  height: 56px;
+  opacity: 0;
+}
+.brand-name {
+  font-size: 30px;
+  line-height: 40px;
+  font-weight: 700;
+  color: #24344d;
+  letter-spacing: -0.4px;
+}
+.login-panel {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 28px);
+  transform: translate(-50%, -50%);
+  width: 460px;
+  min-height: 500px;
+  padding: 42px 44px;
+  background: white;
+  border: 1px solid #dce3ee;
+  border-radius: 24px;
+  box-shadow: 0 12px 45px #24344d04;
+}
+.login-panel h1 {
+  font-size: 30px;
+  line-height: 42px;
+  font-weight: 600;
+  margin: 0 0 30px;
+}
+.login-field {
+  display: block;
+  margin-bottom: 22px;
+}
+.login-field > span {
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e819f;
+  margin-bottom: 8px;
+}
+.login-field input {
+  height: 48px;
+  border: 1px solid #dce4f0;
+  border-radius: 9px;
+  padding: 0 13px;
+  width: 100%;
+  font-size: 15px;
+  color: #415879;
+  background: white;
+  outline: none;
+}
+.login-field input:focus {
+  border-color: #98b0e8;
+  box-shadow: 0 0 0 2px #5b80e50a;
+}
+.password-field {
+  margin-bottom: 0;
+}
+.password-wrap {
+  position: relative;
+}
+.password-wrap input {
+  padding-right: 48px;
+}
+/* This field already has an accessible reveal button. Hide Edge's duplicate. */
+.password-wrap input::-ms-reveal,
+.password-wrap input::-ms-clear {
+  display: none;
+}
+#password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: #92a2ba;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+}
+.forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  height: 20px;
+  margin-top: 12px;
+}
+.text-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #6385ce;
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+}
+.form-error {
+  height: 18px;
+  line-height: 18px;
+  font-size: 11px;
+  color: #b57570;
+  margin: 4px 0 0;
+}
+.login-submit {
+  display: block;
+  height: 48px;
+  border-radius: 9px;
+  width: 100%;
+  border: 1px solid #5b80e5;
+  background: #5b80e5;
+  color: white;
+  font-size: 15px;
+  margin-top: 12px;
+}
+.register-row {
+  text-align: center;
+  margin-top: 24px;
+  line-height: 22px;
+  font-size: 13px;
+  color: #94a0b4;
+}
+.register-row .text-link {
+  margin-left: 8px;
+}
+.intro {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+.intro[hidden] {
+  display: none;
+}
+.intro-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 430px 350px at 50% 47%,
+    #ffffff 0%,
+    #f0f4fd 55%,
+    #f5f7fb 100%
+  );
+}
+.logo-flight {
+  position: absolute;
+  left: calc(50% - 80px);
+  top: calc(50% - 80px);
+  height: 160px;
+  width: 160px;
+  transform-origin: 50% 50%;
+  perspective: 900px;
+  z-index: 3;
+}
+.logo-control {
+  display: block;
+  width: 160px;
+  height: 160px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 40px;
+  perspective: 900px;
+  overflow: visible;
+  touch-action: manipulation;
+}
+.logo-control:disabled {
+  cursor: default;
+}
+.logo-solid {
+  display: block;
+  width: 160px;
+  height: 160px;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: var(--rest);
+  transition: filter 0.2s;
+}
+.logo-control:hover .logo-solid {
+  filter: brightness(1.015);
+}
+.logo-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 40px;
+  border: 1px solid #b7c9e9;
+  backface-visibility: visible;
+}
+.logo-face {
+  position: absolute;
+  inset: 0;
+  width: 160px;
+  height: 160px;
+  backface-visibility: hidden;
+  transform: translateZ(1px);
+  border-radius: 40px;
+  background: white;
+}
+.logo-back {
+  transform: translateZ(-20px) rotateY(180deg);
+}
+.intro-shadow {
+  position: absolute;
+  width: 150px;
+  height: 17px;
+  left: calc(50% - 75px);
+  top: calc(50% + 98px);
+  border-radius: 50%;
+  background: #8da5d155;
+  filter: blur(12px);
+  opacity: 0.45;
+}
+.intro-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 136px);
+  text-align: center;
+  pointer-events: none;
+}
+.intro-label strong {
+  font-size: 28px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+.intro-label p {
+  margin: 14px 0 0;
+  color: #96a5bd;
+  font-size: 12px;
+  line-height: 20px;
+  letter-spacing: 1px;
+}
+.intro-orbit {
+  position: absolute;
+  left: calc(50% - 220px);
+  top: calc(50% - 110px);
+  width: 440px;
+  height: 220px;
+  border: 1px solid #dde7f8;
+  border-radius: 50%;
+  transform: rotate(-25deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.intro-orbit.second {
+  transform: rotate(24deg);
+  width: 500px;
+  left: calc(50% - 250px);
+  height: 250px;
+  top: calc(50% - 125px);
+}
+body[data-scheme="B"] .intro-orbit {
+  opacity: 0.55;
+}
+body[data-scheme="C"] .intro-backdrop {
+  background: radial-gradient(
+    ellipse 440px 330px at 50% 48%,
+    #edf3ff 0%,
+    #f5f7fb 75%
+  );
+}
+.preview-tools {
+  max-width: 1100px;
+  margin: 18px auto 30px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: #8e9db3;
+  font-size: 12px;
+  line-height: 22px;
+}
+.preview-tools button {
+  border: 1px solid #d4dff0;
+  border-radius: 8px;
+  background: white;
+  padding: 7px 12px;
+  color: #6f85a9;
+  font-size: 12px;
+}
+.preview-tools a {
+  color: #6685c7;
+  text-decoration: none;
+}
+.preview-status {
+  flex-basis: 100%;
+  margin: 0;
+  color: #899ab4;
+}
+@media (max-width: 600px) {
+  .brand {
+    left: 24px;
+    gap: 12px;
+    top: 19px;
+    height: 50px;
+  }
+  .header-logo {
+    height: 50px;
+    width: 50px;
+  }
+  .brand-name {
+    font-size: 25px;
+  }
+  .login-panel {
+    width: calc(100% - 40px);
+    padding: 32px 28px;
+    min-height: 480px;
+  }
+  .logo-flight {
+    perspective: 700px;
+  }
+  .intro-label strong {
+    font-size: 26px;
+  }
+  .intro-orbit {
+    max-width: 90vw;
+  }
+}
+
+.ambient-background {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 520px 440px at 10% 19%, #d6e1fcb3, transparent 78%),
+    radial-gradient(ellipse 540px 450px at 88% 76%, #d5edf0ba, transparent 80%),
+    radial-gradient(ellipse 460px 350px at 85% 15%, #e7e0fab3, transparent 78%),
+    linear-gradient(135deg, #f4f7fe, #f8faff 49%, #f3f8fc);
+  transition: opacity 0.7s ease;
+}
+.ambient-background svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.auth-scene {
+  z-index: 1;
+}
+body[data-background="rich"] .intro-backdrop {
+  background: transparent;
+}
+body[data-background="rich"] .intro-orbit {
+  width: 600px;
+  height: 280px;
+  left: calc(50% - 300px);
+  top: calc(50% - 140px);
+  border-color: #cfdcf4;
+  opacity: 0.65;
+}
+body[data-background="rich"] .intro-orbit.second {
+  width: 670px;
+  height: 310px;
+  left: calc(50% - 335px);
+  top: calc(50% - 155px);
+  opacity: 0.42;
+}
+body[data-background="rich"] .intro-shadow {
+  background: #91a9d366;
+  filter: blur(14px);
+}
+body[data-background="rich"] .login-panel {
+  box-shadow: 0 14px 50px #526b9a08;
+}
+.auth-page[data-state="login"] .ambient-background {
+  opacity: 0.65;
+}
+@media (max-width: 600px) {
+  body[data-background="rich"] .intro-orbit {
+    max-width: none;
+  }
+  .ambient-background svg {
+    opacity: 0.65;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-background {
+    transition: none;
+  }
+}

@@ -1,0 +1,38 @@
+# Local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and generated files
+node_modules/
+.deps/
+.speech-deps/
+.venv/
+.conda/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.pytest_cache/
+.ruff_cache/
+.cache/
+.npm-cache/
+test-results/
+playwright-report/
+*.log
+
+# Private runtime storage; frontend/src/data is application source
+/backend/data/
+/backups/
+/artifacts/
+/outputs/
+
+# Workstation files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
