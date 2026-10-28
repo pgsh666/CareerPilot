@@ -12,6 +12,7 @@ from starlette.concurrency import run_in_threadpool
 from app.auth import Current, Db, Protected, hit_limit
 from app.db import fresh_authorization
 from app.errors import ApiError
+from app.interview_policy import interviewer_text
 from app.models import (
     GenerationJob,
     PracticeTask,
@@ -358,7 +359,9 @@ async def transcribe(training_id: str, request: Request, db: Db, context: Protec
         root.mkdir(parents=True, exist_ok=True)
         with path.open("xb") as handle:
             handle.write(data)
-        result = await run_in_threadpool(request.app.state.speech.transcribe, path)
+        from app.speech_text import hint_terms
+        terms = hint_terms(q.text, row.resume_snapshot["fields"], row.job_snapshot["fields"])
+        result = await run_in_threadpool(request.app.state.speech.transcribe, path, terms=terms)
         db.expire_all()
         fresh_authorization(db)
         row = own_training(db, context.user.id, training_id, lock=True)
@@ -401,5 +404,5 @@ def question_audio(question_id: str, request: Request, db: Db, context: Current)
     if q.asked_at is None:
         raise ApiError(404, "QUESTION_NOT_FOUND", "该题目尚未提问")
     hit_limit(db, "tts:" + context.user.id, 30, 60)
-    path = request.app.state.speech.tts(q.text)
+    path = request.app.state.speech.tts(interviewer_text(q.text))
     return FileResponse(path, media_type="audio/wav", background=BackgroundTask(path.unlink, missing_ok=True))

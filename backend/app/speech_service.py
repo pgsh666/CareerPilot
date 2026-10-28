@@ -13,16 +13,18 @@ class LocalSpeech:
         self.settings = settings
         self.capacity = BoundedSemaphore(1)
 
-    def transcribe(self, path):
+    def transcribe(self, path, *, terms=None):
         if not (self.settings.speech_model_directory / "model.bin").is_file():
             raise ApiError(503, "ASR_UNAVAILABLE", "本机离线转写模型尚未就绪，可使用键盘备用作答")
         if not self.capacity.acquire(blocking=False):
             raise ApiError(503, "ASR_BUSY", "语音服务正在处理其他录音，请稍后重试或使用键盘备用作答")
         try:
             try:
+                from app.speech_text import clean_terms
                 process = subprocess.run(
                     [sys.executable, "-I", str(BACKEND_DIR / "app" / "speech_worker.py"), str(path),
                      str(self.settings.speech_model_directory), str(self.settings.speech_max_seconds)],
+                    input=json.dumps({"terms": clean_terms(terms or [])}, ensure_ascii=True).encode(),
                     capture_output=True, timeout=self.settings.speech_timeout_seconds,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
                 )

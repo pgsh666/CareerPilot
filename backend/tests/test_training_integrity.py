@@ -158,7 +158,7 @@ def test_abandoned_asr_is_recovered_without_generating_a_question_or_answer(trai
 def test_unexpected_asr_failure_is_persisted_and_temporary_audio_is_removed(training):
     h, headers, *_ = training
     row = wait(training, start(training).json()['training']['id'], lambda r: r['phase'] == 'answering')
-    def broken_transcribe(_):
+    def broken_transcribe(_, *, terms=None):
         raise RuntimeError('synthetic internal failure; never expose provider internals')
     h.app.state.speech.transcribe = broken_transcribe
     response = h.client.post(f'/api/v1/training/sessions/{row["id"]}/transcripts', params={'question_id': row['currentQuestion']['id']},

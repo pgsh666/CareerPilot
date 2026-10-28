@@ -9,8 +9,8 @@ from test_training import keyboard, read, start, wait
 from test_training import training as training
 from training_support import FakeGateway
 
-from app.interview_policy import VERSION, blueprint
-from app.models import GenerationJob, Training
+from app.interview_policy import VERSION, blueprint, interviewer_text
+from app.models import GenerationJob, Training, TrainingQuestion
 from app.scoring import RULES, snapshot
 from app.training_prompts import policy_version, prepare
 from app.training_schemas import NaturalQuestionPlan, ScoredQuestionPlan
@@ -144,6 +144,74 @@ def test_short_quote_from_other_requirement_or_without_focus_is_rejected():
         value["questions"][2]["basis"][0]["quote"] = quote
         with pytest.raises(ValueError):
             validate(schema.model_validate(value, strict=True))
+
+
+def set_jd_requirement(data, value, quote, focus, text):
+    question = value["questions"][2]
+    target = next(item for item in data["interview_blueprint"]["requirements"]
+                  if item["id"] == question["requirement_id"])
+    target.update(quote=quote, tool_use=False)
+    data["context"]["job"]["requirements"] += "\n" + quote
+    data["interview_blueprint"]["slots"][2]["requirement_quote"] = quote
+    question.update(requirement_focus=focus, text=text, basis=[{"kind": "job", "quote": quote}])
+
+
+@pytest.mark.parametrize("separator", [" / ", "、", "，", ";", "／", " | ", "\n"])
+def test_composite_labels_lock_an_actual_asked_facet_without_rewriting_the_plan(separator):
+    data, value = contract(), proposed(contract())
+    set_jd_requirement(data, value, "能够独立完成需求分析、PRD撰写和项目推动",
+                       separator.join(["需求分析", "PRD撰写", "项目推动"]),
+                       "讲一次你完成需求分析并撰写PRD的经历，关键做法是什么？")
+    schema, _, _, validate = prepare("plan", data)
+    result = schema.model_validate(value, strict=True)
+    before = result.model_dump(mode="json")
+    validate(result)
+    assert result.questions[2].requirement_focus == "需求分析"
+    before["questions"][2]["requirement_focus"] = "需求分析"
+    assert result.model_dump(mode="json") == before
+    validate(result)  # Canonical metadata must pass again when cached/restored.
+
+
+@pytest.mark.parametrize(("quote", "focus", "text"), [
+    ("能独立完成PRD撰写", "PRD撰写", "你会怎样撰写PRD并交给开发同事？"),
+    ("能独立完成需求分析并推动落地", "独立完成需求分析并推动落地", "你做需求分析时首先会确认什么？"),
+    ("持续跟进新技术，快速理解AI领域的新概念和新产品", "新技术跟进", "你最近了解了哪个AI新概念，如何判断它的用途？"),
+    ("快速理解并吸收AI领域的新概念和新产品", "快速理解并吸收", "你是怎样快速理解一个AI新概念的？"),
+    ("持续关注新产品并判断应用价值", "新产品", "最近哪个新的AI产品让你改变了原有想法？"),
+])
+def test_natural_word_order_and_source_grounded_facet_recovery(quote, focus, text):
+    data, value = contract(), proposed(contract())
+    set_jd_requirement(data, value, quote, focus, text)
+    schema, _, _, validate = prepare("plan", data)
+    result = schema.model_validate(value, strict=True)
+    validate(result)
+    assert result.questions[2].text == text
+    validate(result)
+
+
+@pytest.mark.parametrize(("quote", "focus", "text"), [
+    ("能够独立完成需求分析、PRD撰写和项目推动", "需求分析/PRD撰写/项目推动", "你平时最喜欢哪种运动，为什么？"),
+    ("具备较强的实际工作经验", "实际工作经验", "你具备怎样的实际工作经验？"),
+    ("能够熟练使用ChatGPT", "ChatGPT", "What do you enjoy doing after class?"),
+    ("熟悉数据库事务并发处理", "事务", "你能介绍一下数据库音乐播放器吗？"),
+])
+def test_recovery_rejects_unrelated_questions_filler_and_partial_latin_tokens(quote, focus, text):
+    data, value = contract(), proposed(contract())
+    set_jd_requirement(data, value, quote, focus, text)
+    schema, _, _, validate = prepare("plan", data)
+    with pytest.raises(ValueError, match="focus must occur"):
+        validate(schema.model_validate(value, strict=True))
+
+
+def test_listed_example_tools_need_only_the_one_actually_asked():
+    data = contract()
+    value = proposed(data)
+    value["questions"][2].update(requirement_focus="ChatGPT、Claude、Cursor",
+                                  text="能分享一次你使用Cursor完成任务的经历吗？")
+    schema, _, _, validate = prepare("plan", data)
+    result = schema.model_validate(value, strict=True)
+    validate(result)
+    assert result.questions[2].requirement_focus == "cursor"
 
 
 def test_empty_metadata_and_server_added_common_dimensions_are_canonicalized():
@@ -306,3 +374,80 @@ def test_existing_interview_keeps_old_followup_and_reporting_policy(training):
         follow = db.scalar(select(GenerationJob).where(GenerationJob.training_id == row["id"], GenerationJob.kind == "advance"))
         assert "interview_policy" not in follow.input_snapshot
         assert "group_questions" not in follow.input_snapshot
+
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("JD要求具备基本AI使用经验，请说一次使用AI工具的经历。", "我们要求具备基本AI使用经验，请说一次使用AI工具的经历。"),
+    ("第3题：JD中要求熟悉AI工具，你是怎样使用Cursor的？", "第3题：我们要求熟悉AI工具，你是怎样使用Cursor的？"),
+    ("这份JD里提到的要求是具备产品经验，你能举个例子吗？", "我们要求具备产品经验，你能举个例子吗？"),
+    ("根据JD要求，你平时怎么使用AI工具？", "想请问，你平时怎么使用AI工具？"),
+    ("根据岗位描述，你平时怎么使用AI工具？", "想请问，你平时怎么使用AI工具？"),
+    ("JD不要求用过全部工具，能谈谈你最熟悉的一个吗？", "我们不要求用过全部工具，能谈谈你最熟悉的一个吗？"),
+    ("职位描述优先考虑制造业经验，你如何了解这个行业？", "我们优先考虑制造业经验，你如何了解这个行业？"),
+    ("我们希望你熟悉AI工具，能谈一次具体使用经历吗？", "我们希望你熟悉AI工具，能谈一次具体使用经历吗？"),
+    ("如果让你设计一个JD要求提取工具，你会从哪里开始？", "如果让你设计一个JD要求提取工具，你会从哪里开始？"),
+])
+def test_interviewer_wording_changes_only_source_narration(text, expected):
+    assert interviewer_text(text) == expected
+    assert interviewer_text(expected) == expected
+
+
+def test_question_generation_and_followups_use_interviewer_voice_without_rewriting_quotes():
+    data, value = contract(), proposed(contract())
+    value["questions"][2]["text"] = "JD要求使用AI工具，能分享一次你使用AI工具完成任务的经历吗？"
+    schema, prompt, _, validate = prepare("plan", data)
+    assert "不必每题重复介绍要求" in prompt and "加分项不能改成硬性要求" in prompt
+    result = schema.model_validate(value, strict=True)
+    basis = result.questions[2].basis[0].quote
+    validate(result)
+    assert result.questions[2].text.startswith("我们要求")
+    assert result.questions[2].basis[0].quote == basis
+    data.update(answer={"text": "JD要求使用AI工具，我用Cursor整理过代码。"}, follow=0)
+    schema, prompt, _, validate = prepare("advance", data)
+    follow = schema.model_validate({"action": "followup", "question": "JD要求使用AI工具，你如何验证Cursor的结果？",
+                                    "quote": "JD要求使用AI工具", "reference_points": ["说明实际验证方法。"]})
+    validate(follow)
+    assert follow.question.startswith("我们要求")
+    assert follow.quote == "JD要求使用AI工具"
+
+
+def test_variant_does_not_count_changed_intro_as_a_new_question():
+    data = {**contract(), "focus": "工具使用", "question": "JD要求熟悉AI工具，你如何验证结果？",
+            "answer": "我用Cursor整理过代码。"}
+    schema, prompt, _, validate = prepare("variant", data)
+    assert "主问、追问和变式题保持同一面试官口吻" in prompt
+    result = schema.model_validate({"text": "我们要求熟悉AI工具，你如何验证结果？", "topic": "工具使用",
+                                    "basis": [{"kind": "question", "quote": "熟悉AI工具"}]})
+    with pytest.raises(ValueError, match="Variant repeats original"):
+        validate(result)
+
+
+def test_existing_question_display_and_audio_agree_without_changing_stored_history(training, tmp_path):
+    h, *_, fake, speech = training
+    row = wait(training, start(training).json()["training"]["id"], lambda r: r["phase"] == "answering")
+    qid = row["currentQuestion"]["id"]
+    original = "JD要求熟悉AI工具，请谈一次你的实际使用经历。"
+    with h.app.state.session_factory.begin() as db:
+        question = db.get(TrainingQuestion, qid)
+        question.text = original
+        dimensions, references = question.dimension_ids, question.reference_points
+    row = read(training, row["id"])
+    assert row["currentQuestion"]["text"] == "我们要求熟悉AI工具，请谈一次你的实际使用经历。"
+    assert row["questions"][0]["text"] == row["currentQuestion"]["text"]
+    spoken = []
+    wave = tmp_path / "offline-tts.wav"
+
+    def capture_voice(text):
+        spoken.append(text)
+        wave.write_bytes(b"RIFF-offline-TTS-substitute")
+        return wave
+
+    speech.tts = capture_voice
+    assert h.client.get(f"/api/v1/training/questions/{qid}/audio").status_code == 200
+    assert spoken == [row["currentQuestion"]["text"]]
+    assert not wave.exists()
+    assert fake.calls == ["question"]
+    with h.app.state.session_factory() as db:
+        question = db.get(TrainingQuestion, qid)
+        assert question.text == original
+        assert question.dimension_ids == dimensions and question.reference_points == references

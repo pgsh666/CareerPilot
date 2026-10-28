@@ -4,6 +4,7 @@ import json
 from sqlalchemy import select
 
 from app.errors import ApiError
+from app.interview_policy import interviewer_text
 from app.models import (
     GenerationJob,
     Material,
@@ -432,11 +433,11 @@ def payload(db, row):
             "revision": row.revision, "count": row.question_count,
             "resume": row.resume_snapshot, "job": row.job_snapshot,
             "taskId": row.task_id, "sourceId": row.source_id, "sourceAnswer": row.original_answer,
-            "currentQuestion": {"id": q.id, "text": q.text, "main": q.main, "follow": q.follow,
+            "currentQuestion": {"id": q.id, "text": interviewer_text(q.text), "main": q.main, "follow": q.follow,
                                 "topic": q.topic, "draft": q.draft, "draftRevision": q.draft_revision,
                                 "faultId": q.fault_id, "keyboardReason": q.keyboard_reason,
                                 "transcriptId": q.transcript_id, "transcriptText": receipt.text if receipt else ""} if q else None,
-            "questions": [{"id": x.id, "text": x.text, "main": x.main, "follow": x.follow, "topic": x.topic,
+            "questions": [{"id": x.id, "text": interviewer_text(x.text), "main": x.main, "follow": x.follow, "topic": x.topic,
                            **({"dimensionIds": x.dimension_ids, "referencePoints": x.reference_points}
                               if row.status in TERMINAL else {})} for x in questions],
             "answers": [answer_payload(a) for a in answers], "jobs": [public_job(j) for j in jobs],

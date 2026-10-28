@@ -186,7 +186,7 @@ test("评分说明、首页公告和仅上传头像保持可用", async ({ page 
   await page.goto("/#/home");
   await page.getByRole("tab", { name: "更新公告", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "练习更自然，复盘更清晰" }),
+    page.getByRole("heading", { name: "面试、报告与语音体验更新" }),
   ).toBeVisible();
   for (const [width, height] of [
     [1440, 900],
@@ -215,7 +215,7 @@ test("评分说明、首页公告和仅上传头像保持可用", async ({ page 
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("button", { name: /查看更新详情/ }).click();
-  await expect(page.getByRole("dialog")).toContainText("2026.10.27");
+  await expect(page.getByRole("dialog")).toContainText("2026.10.28");
   await expect(page.locator(".modal-mask")).toHaveCSS("opacity", "1");
   await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
   await page.screenshot({

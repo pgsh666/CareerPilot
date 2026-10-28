@@ -41,6 +41,7 @@ RULES = {
     "Evidence crosses main question groups": "CROSS_GROUP_EVIDENCE",
     "Ratings must cover exactly the submitted main question groups": "RATING_GROUPS_MISMATCH",
     "Frozen group omits a common dimension": "COMMON_DIMENSION_MISSING",
+    "Conflicting ratings within one main question group": "RATING_GROUPS_CONFLICT",
     "A group rating changed its preassigned dimensions": "RATING_DIMENSIONS_MISMATCH",
     "N/A must not claim scoring evidence": "NA_EVIDENCE_CONFLICT",
     "Numeric levels require an observable demonstration and exact evidence": "RATING_EVIDENCE_MISSING",
@@ -109,6 +110,10 @@ def diagnostic(error, stage):
 def public_message(detail):
     if detail.get("rule") == "INCOMPLETE_RESPONSE":
         reason = "模型未完整返回生成内容"
+    elif detail.get("rule") == "RATING_GROUPS_CONFLICT":
+        reason = "同一题组出现多套不一致评分，无法直接合并报告"
+    elif detail.get("rule") in {"REPORT_GROUPS_MISMATCH", "RATING_GROUPS_MISMATCH"}:
+        reason = "报告返回的主问题题组不完整或存在额外题组"
     elif detail.get("stage") == "schema":
         reason = "模型返回内容的结构或必要字段不符合要求"
     elif detail.get("stage") in {"json", "envelope"}:

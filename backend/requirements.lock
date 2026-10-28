@@ -1,4 +1,5 @@
 # Python 3.12 / Windows; verified backend development dependencies, 2026-10-25.
+opencc-python-reimplemented==0.1.7
 Mako==1.4.3
 MarkupSafe==3.0.4
 PyMySQL==1.2.3

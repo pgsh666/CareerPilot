@@ -7,16 +7,18 @@ import sys
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(BACKEND / ".speech-deps")]
+sys.path[:0] = [str(BACKEND / ".speech-deps"), str(BACKEND), str(BACKEND / ".deps")]
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 logging.disable(logging.CRITICAL)
 
 
-def transcribe(path, model_dir, maximum):
+def transcribe(path, model_dir, maximum, terms=None):
     import av
     import numpy as np
     from faster_whisper import WhisperModel
+
+    from app.speech_text import decoder_options, normalize_transcript
     samples = []
     count = 0
     with av.open(path) as container:
@@ -37,20 +39,22 @@ def transcribe(path, model_dir, maximum):
         raise ValueError("NO_SPEECH")
     model = WhisperModel(model_dir, device="cpu", compute_type="int8", cpu_threads=4,
                          num_workers=1, local_files_only=True)
-    segments, _ = model.transcribe(audio, language="zh", beam_size=3, vad_filter=True,
-                                   condition_on_previous_text=False, no_speech_threshold=0.6,
-                                   vad_parameters={"min_silence_duration_ms": 500})
-    text = "".join(segment.text for segment in segments).strip()
+    segments, _ = model.transcribe(audio, **decoder_options(terms))
+    text = normalize_transcript("".join(segment.text for segment in segments))
     if not text:
         raise ValueError("NO_SPEECH")
     if len(text) > 20_000:
         raise ValueError("AUDIO_TOO_LONG")
-    return {"text": text, "seconds": math.ceil(count / 16000), "provider": "local-whisper-small-v1"}
+    return {"text": text, "seconds": math.ceil(count / 16000), "provider": "local-whisper-small-v2"}
 
 
 if __name__ == "__main__":
     try:
-        result = transcribe(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+        payload = sys.stdin.buffer.read(8193) if not sys.stdin.isatty() else b""
+        if len(payload) > 8192:
+            raise ValueError("ASR_UNAVAILABLE")
+        terms = json.loads(payload).get("terms", []) if payload else []
+        result = transcribe(sys.argv[1], sys.argv[2], int(sys.argv[3]), terms)
     except Exception as error:
         known = {"AUDIO_INVALID", "AUDIO_TOO_LONG", "NO_SPEECH"}
         result = {"error": str(error) if isinstance(error, ValueError) and str(error) in known else "ASR_UNAVAILABLE"}

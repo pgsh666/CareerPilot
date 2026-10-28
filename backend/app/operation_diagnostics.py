@@ -11,6 +11,7 @@ STAGE_LABELS = {"envelope": "响应完整性", "json": "JSON格式", "schema": "
                 "contract": "内容规则校验", "transport": "模型连接与响应", "worker": "后台任务处理",
                 "recovery": "已付费结果离线复核"}
 REASONS = {
+    "RATING_GROUPS_CONFLICT": "同一主问题题组返回多套不一致评分，无法安全合并；保留原结果，未取平均或丢弃评分。",
     "SCHEMA_INVALID": "返回内容缺少必要字段，或字段类型、范围不符合约定。",
     "JSON_INVALID": "返回内容无法解析为完整JSON对象。",
     "INCOMPLETE_RESPONSE": "供应商未完整返回内容，可能被输出长度等限制中断。",
@@ -25,7 +26,7 @@ REASONS = {
     "RESUME_EVIDENCE_MISSING": "经历题缺少对应简历原文依据。",
     "UNEXPECTED_JD_METADATA": "非JD题位填入了不适用的JD考察项。",
     "JD_REQUIREMENT_MISMATCH": "没有考察题位预先分配的JD要求。",
-    "JD_FOCUS_MISMATCH": "实质考察词没有同时体现在分配要求和实际题干中。",
+    "JD_FOCUS_MISMATCH": "题干与分配的JD考点缺少可核对的实质关键词；已兼容复合标签和部分自然语序。",
     "JD_SOURCE_MISMATCH": "引用不属于分配的JD要求，或未包含本题考察词。",
     "AI_TOOL_REQUIREMENT_OMITTED": "AI工具要求没有在实际题干中体现。",
     "SCORING_DIMENSIONS_INVALID": "包含未批准或重复的评分专项。",

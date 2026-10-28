@@ -20,10 +20,88 @@ TOOLS = re.compile(r"chatgpt|claude|cursor|copilot|gemini|通义|豆包|文心|a
 PROJECT_BOUND = re.compile(r"(?:你的|你们的|这个|该|上述)项目|在项目[中里]|项目[中里]")
 WEAK_FOCUS = {"要求", "任职要求", "岗位要求", "能力", "相关能力", "具备", "熟悉", "熟练", "掌握",
               "了解", "使用", "使用过", "经验", "项目", "工作", "优先", "加分", "负责", "相关"}
+FOCUS_SEPARATORS = re.compile(r"[、，,；;/／|｜\n]+")
+FOCUS_FILLER = re.compile(
+    r"任职要求|岗位要求|相关能力|实际工作|实际经历|工作经验|使用经验|具有|具备|能够|"
+    r"独立|完成|较强|良好|一定|实际|具体|相关|能力|经验|要求|熟悉|熟练|掌握|了解|"
+    r"使用过|使用|项目|工作|优先|加分|负责|以及|如何|怎么|什么|可以|一个|一次|"
+    r"ai|学习|理解|吸收|跟进|快速|领域|基础|基本|的|和|与|及|并"
+)
+JOB_DESCRIPTION = (
+    r"(?:(?:这份|该|当前|目标|这则)\s*)?"
+    r"(?:岗位\s*JD|职位\s*JD|(?<![a-z0-9])JD(?![a-z0-9])|岗位描述|职位描述|岗位说明书?|职位说明书?)"
+    r"\s*(?:中|里|上)?\s*"
+)
+INTERVIEWER_LEAD = r"(?P<lead>^\s*|[。！？；：，!?;:,\n]\s*)"
+DESCRIPTION_CONTEXT = re.compile(
+    INTERVIEWER_LEAD + r"(?:根据|按照|结合|针对)\s*" + JOB_DESCRIPTION
+    + r"(?:(?:的)?(?:任职|岗位)?要求)?\s*[，,：:]\s*", re.I,
+)
+DESCRIPTION_REQUIREMENT = re.compile(
+    INTERVIEWER_LEAD + r"(?:(?:根据|按照|结合|针对)\s*)?" + JOB_DESCRIPTION
+    + r"(?:(?:明确|主要|特别)?(?:提到|提出|列出|写明|提及|注明)(?:的)?\s*)?(?:的)?"
+    + r"(?P<verb>(?:并不|不)?(?:要求|需要|希望|看重|强调|关注|重视|优先考虑))(?:是(?!否))?", re.I,
+)
 
 
 def normalized(text):
     return re.sub(r"[\W_]+", "", unicodedata.normalize("NFKC", text).casefold())
+
+
+def interviewer_text(text):
+    """Rephrase only introductory source narration; retain question substance.
+
+    Shared by display and TTS for existing questions. Source quotations and
+    submitted answers are untouched; stored question text is never updated here.
+    """
+    text = DESCRIPTION_CONTEXT.sub(lambda match: match["lead"] + "想请问，", text)
+    return DESCRIPTION_REQUIREMENT.sub(lambda match: match["lead"] + "我们" + match["verb"], text)
+
+
+def matching_focus(focus, requirement, question):
+    """Find concrete shared anchors, not an entire concatenated model label.
+
+    Keep exact short technical terms compatible. For longer labels, accept list
+    members or substantive phrases of at least three characters. All candidates
+    must occur in both the assigned source and the actual question; this is a
+    bounded lexical check, not a claim to understand arbitrary paraphrases.
+    """
+    source, asked = normalized(requirement), normalized(question)
+    parts = [normalized(part) for part in FOCUS_SEPARATORS.split(focus)]
+    seen = set()
+    for part in [normalized(focus), *parts]:
+        if (len(part) >= 2 and part not in WEAK_FOCUS and len(FOCUS_FILLER.sub("", part)) >= 2 and part not in seen
+                and part in source and part in asked):
+            seen.add(part)
+            yield part
+    # Model metadata may summarize another facet of the same long requirement.
+    # Recover an actual source phrase rather than rejecting a relevant question
+    # merely because its private label is imprecise.
+    source_parts = ([normalized(part) for part in FOCUS_SEPARATORS.split(requirement)]
+                    if len(normalized(focus)) >= 5 else [])
+    for part in [*parts, *source_parts]:
+        if len(FOCUS_FILLER.sub("", part)) < 2:
+            continue
+        for size in range(min(len(part), 80), 2, -1):
+            for start in range(len(part) - size + 1):
+                end = start + size
+                anchor = part[start:end].strip("的和与及并")
+                # Never treat a fragment such as "hat" from ChatGPT as a tool.
+                if ((start and part[start - 1].isascii() and part[start - 1].isalnum()
+                     and part[start].isascii() and part[start].isalnum())
+                        or (end < len(part) and part[end].isascii() and part[end].isalnum()
+                            and part[end - 1].isascii() and part[end - 1].isalnum())):
+                    continue
+                if anchor in seen or len(anchor) < 3 or len(FOCUS_FILLER.sub("", anchor)) < 2 or anchor not in source:
+                    continue
+                seen.add(anchor)
+                present = anchor in asked
+                if not present and re.fullmatch(r"[\u4e00-\u9fff]{3,20}", anchor):
+                    # Natural noun modifiers: 新产品 -> 新的AI产品, 需求分析 -> 需求的分析.
+                    # No synonym guessing, reordered clauses or arbitrary gaps.
+                    present = bool(re.search(r"(?:的|ai|人工智能){0,2}".join(anchor), asked))
+                if present:
+                    yield anchor
 
 
 def natural(data):
@@ -115,12 +193,21 @@ def validate_composition(result, plan):
         if question.requirement_id != slot["requirement_id"]:
             raise ValueError("Question omitted its assigned JD requirement")
         target = targets[question.requirement_id]
-        focus = normalized(question.requirement_focus)
-        if (len(focus) < 2 or focus in WEAK_FOCUS or focus not in normalized(target["quote"])
-                or focus not in normalized(question.text)):
+        matches = matching_focus(question.requirement_focus, target["quote"], question.text)
+        focus, matched = None, False
+        for anchor in matches:
+            matched = True
+            if any(b.kind == "job" and b.quote in target["quote"] and anchor in normalized(b.quote)
+                   for b in question.basis):
+                focus = anchor
+                break
+        if not matched:
             raise ValueError("JD focus must occur in both the requirement and the actual question")
-        if not any(b.kind == "job" and b.quote in target["quote"]
-                   and focus in normalized(b.quote) for b in question.basis):
+        if focus is None:
             raise ValueError("JD question must cite its allocated source requirement")
         if target["tool_use"] and not TOOLS.search(question.text):
             raise ValueError("AI tool requirements must be addressed in the actual question")
+        # Canonicalize private metadata only. Never rewrite the displayed question,
+        # its evidence, reference points or frozen scoring dimensions.
+        if normalized(question.requirement_focus) != focus:
+            question.requirement_focus = focus

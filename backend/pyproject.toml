@@ -20,6 +20,7 @@ dependencies = [
   "pypdf>=6.21.2,<7",
   "httpx>=0.28,<1",
   "Pillow>=13,<14",
+  "opencc-python-reimplemented>=0.1.7,<0.2",
 ]
 
 [project.optional-dependencies]

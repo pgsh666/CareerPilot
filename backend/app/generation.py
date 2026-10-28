@@ -299,8 +299,18 @@ class GenerationRunner:
             raise ApiError(409, "MODEL_COST_UNCERTAIN", "上次费用仍待核实，未发起新的付费调用")
         reusable = bool(spend and spend.state == "succeeded" and spend.result is not None)
         recovered = None
-        if spend and spend.owner_id == owner_id and spend.state == "failed" and spend.error_code == "MODEL_OUTPUT_INVALID":
-            candidate = rejected_output(spend.result)
+        recovered_spend = None
+        candidates = [spend] if spend else []
+        if job.kind == "report":
+            candidates = list(db.scalars(select(ModelSpend).where(
+                ModelSpend.owner_id == owner_id,
+                ModelSpend.request_key.like(job.id + "-attempt-%"),
+                ModelSpend.state == "failed", ModelSpend.error_code == "MODEL_OUTPUT_INVALID")
+                .order_by(ModelSpend.created_at.desc(), ModelSpend.id).limit(20)))
+        for cached in candidates:
+            if cached.owner_id != owner_id or cached.state != "failed" or cached.error_code != "MODEL_OUTPUT_INVALID":
+                continue
+            candidate = rejected_output(cached.result)
             if candidate is not None:
                 stage = "schema"
                 try:
@@ -309,6 +319,8 @@ class GenerationRunner:
                     if validate:
                         stage = "contract"
                         validate(recovered)
+                    recovered_spend = cached
+                    break
                 except (ValueError, TypeError, KeyError, IndexError) as error:
                     recovered = None
                     logger.warning("cached_output_rejected job_id=%s diagnostic=%s", job.id,
@@ -321,7 +333,7 @@ class GenerationRunner:
         job.diagnostic = None
         if recovered is not None:
             job.output, job.state = recovered.model_dump(mode="json"), "ready"
-            job.diagnostic = {"stage": "recovery", "rule": "CACHED_OUTPUT_ACCEPTED", "sourceSpendId": spend.id}
+            job.diagnostic = {"stage": "recovery", "rule": "CACHED_OUTPUT_ACCEPTED", "sourceSpendId": recovered_spend.id}
         job.auth_session_id = db.info.get("origin_session_id")
         if job.kind == "report":
             db.get(Training, job.training_id).report_state = "queued"

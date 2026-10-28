@@ -87,6 +87,12 @@
 .room-actions .ui-button {
   min-width: 156px;
 }
+.room-actions .ui-button:focus-visible {
+  outline-offset: -4px;
+}
+.room-actions .recording-button:focus-visible {
+  outline-color: #b46c6c;
+}
 .skip-button {
   margin-right: auto;
   font-size: 0.9em;

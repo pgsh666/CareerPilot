@@ -1,7 +1,12 @@
 """Frozen legacy contracts and the approved conversational interview policy."""
 import json
 
-from app.interview_policy import natural, validate_composition, validate_question_text
+from app.interview_policy import (
+    interviewer_text,
+    natural,
+    validate_composition,
+    validate_question_text,
+)
 from app.training_schemas import (
     FollowDecision,
     NaturalQuestionPlan,
@@ -15,6 +20,13 @@ from app.training_schemas import (
 )
 
 POLICY = "training-evidence-v1"
+INTERVIEWER_VOICE = (
+    "以目标岗位面试官的身份直接与候选人对话，不用旁白转述材料。"
+    "题干不要说‘JD要求’‘JD提到’‘根据岗位描述’‘根据简历’；"
+    "引入已确认的岗位要求时，可说‘我们要求’‘我们希望’‘这个岗位需要’，也可以直接提问，"
+    "不必每题重复介绍要求。‘我们’仅代指本次模拟的招聘方，不能借此编造公司内部情况或新增任职条件；"
+    "原文的优先项、加分项不能改成硬性要求。主问、追问和变式题保持同一面试官口吻。"
+)
 SCORING_BOUNDARY = (
     "逐维独立匹配该维分档，不把专业正确性混入所有通用维度。"
     "回答相关性看是否回应所问内容：讨论本题的方案即使方案错误，也不能仅因专业错误判成完全偏题；"
@@ -52,6 +64,7 @@ def model_context(resume, job):
 
 
 def prepare(kind, data):
+    content_data = data
     context = data.get("context", {})
     scoring = data.get("scoring")
     scored = bool(scoring and scoring.get("aggregation") == "group_once_dimension_mean_weighted_coverage_v1")
@@ -76,7 +89,9 @@ def prepare(kind, data):
                     "没有项目/实习材料时不预设经历，允许如实说没做过并讨论假设做法。"
                     "每道题basis引用resume或job中的逐字短句，topic是主题，不是评分维度。"
                     "JD题必须填写已分配的requirement_id，在basis逐字摘录对应requirement_quote中的相关短句；"
-                    "requirement_focus是该要求中有实质含义的原文关键词，必须同时出现在实际题干中，"
+                    "requirement_focus只填本题实际询问的一个具体原文关键词或短语，例如‘需求分析’或‘Cursor’，"
+                    "不要把整条要求或‘需求分析/PRD撰写/项目推动’这样的多个标签合并填入。"
+                    "题干允许自然语序，例如‘PRD撰写’可问‘如何撰写PRD’，不必照抄整条JD。"
                     "不能用‘能力/要求/熟悉/项目’等空泛词冒充覆盖。其他题位这两字段留空。"
                     "AI工具要求的主问必须明确提及AI工具或其中一个示例工具，询问一次实际使用；"
                     "工具名是示例，不要求用过全部工具；深入思考通过作答及后续追问了解。"
@@ -93,6 +108,8 @@ def prepare(kind, data):
                      "各专项通过具体工作问题覆盖，不为凑评分维度把多个知识考点塞进同一主问。")
 
         def validate(result):
+            for question in result.questions:
+                question.text = interviewer_text(question.text)
             if len(result.questions) != data["count"] or len({q.text for q in result.questions}) != data["count"]:
                 raise ValueError("Wrong question count or duplicates")
             validate_basis(result.questions, context)
@@ -118,6 +135,7 @@ def prepare(kind, data):
 
         def validate(result):
             if result.action == "followup":
+                result.question = interviewer_text(result.question)
                 if data["follow"] >= 2 or not result.question.strip() or not result.quote or result.quote not in data["answer"]["text"]:
                     raise ValueError("Invalid follow-up")
                 if conversational:
@@ -135,7 +153,8 @@ def prepare(kind, data):
             goal += "延续原题的实际工作情境和自然表达，一次只问一个核心问题，不改成定义背诵或原理考试。"
 
         def validate(result):
-            if result.text.strip() == data["question"].strip():
+            result.text = interviewer_text(result.text)
+            if result.text.strip() == interviewer_text(data["question"]).strip():
                 raise ValueError("Variant repeats original")
             validate_basis([result], {"answer": data["answer"], "question": data["question"]})
     else:
@@ -158,6 +177,29 @@ def prepare(kind, data):
                          "没有经历但有假设分析可以按题目要求评价，区分假设与实测。补充可完善整组判断，关键矛盾须指出。"
                          "不自行计算综合分、百分制总分或覆盖率，这些由服务端按固定公式计算。"
                          "每项reason尽量不超过80字，evidence取一句短引文，避免复述整段答案。")
+                if "groups" in data and "questions" in data:
+                    from app.reporting import grouped_input, output_schema
+                    content_data = grouped_input(data)
+                    schema = output_schema(data)
+                    count = len(content_data["expected_group_ids"])
+                    goal = (SCORING_BOUNDARY + f"本场只生成{count}个题组反馈和{count}个题组评分。"
+                             "report_groups中的每个对象就是一个完整评分单位；turns是同组主问与追问，不能拆开评分。"
+                             "questions与ratings的question_id必须各使用一次expected_group_ids中的ID，不能使用turn_id。"
+                             "每个题组必须综合其全部turns和answers后给出一套评分，不另列追问评分。"
+                             "每组dimension_ids有几项就输出几项，三项通用维度已在列表内，不另补未分配的专项。"
+                             "dimensions严格覆盖report_groups中锁定的dimension_ids，按固定分档给0—4整数或null。"
+                             "每次回答的evidence_spans按顺序拼接就是完整原文，必须结合完整回答判断，不能只看选中的一段。"
+                             "所有反馈、评分证据及改进项只选择同组已有的evidence_ref，即evidence_spans.id，"
+                             "不自行抄写、改写或拼接引文，不输出answer_id或quote。改进项不输出question_id，后端按原文片段绑定题目。"
+                             "strengths/missing各项还要给comment；评分给reason；improvements给focus和suggestion。"
+                             "只评实际有回答的题组，每维结合整组评一次；不自行计算总分、覆盖率或改变规则。"
+                             "数值评分必须有原文证据，无依据null时evidence为空。只说不会且无分析时全组记null；"
+                             "有实质内容但泛泛或错误时按实际档位评价，不能用null排除低分；有效0分也须依据。"
+                             "允许有依据的不同方案，区分事实与假设，不把建议当成已做到的事实，不给录用结论。"
+                             "同一具体回答至多给一项优先改进，不为了凑满三项捏造不足。"
+                             "为完整返回，summary不超过180字；每组strengths/missing各最多1项，comment不超过80字；"
+                             "每维reason不超过40字，evidence只取1条；"
+                             "improvements的suggestion不超过100字。不复述材料、完整答案或评分标准。")
         else:
             goal += "comparison对照source_answer与本次回答，说明新增内容和仍缺内容，不给提升百分比。"
         if conversational:
@@ -167,6 +209,10 @@ def prepare(kind, data):
                      "用户讲工具使用时看具体做法及其对结果的判断，不要求使用全部示例工具。")
 
         def validate(result):
+            original = result
+            if kind == "report" and scored and "groups" in data:
+                from app.reporting import normalize_report
+                result = normalize_report(result, data)
             answers = {a["id"]: a for a in data["answers"] if a["text"] and not a["skipped"]}
             elements = []
             if kind == "report":
@@ -201,12 +247,17 @@ def prepare(kind, data):
                 if scored:
                     from app.scoring import validate_ratings
                     validate_ratings(result, data)
+                original.questions, original.improvements = result.questions, result.improvements
+                if scored:
+                    original.ratings = result.ratings
+    if kind in {"plan", "advance", "variant"}:
+        goal += INTERVIEWER_VOICE
     boundary = BOUNDARY
     if scored:
         boundary = boundary.replace("不要生成分数、评分规则、标准答案或录用结论。",
                                     "只使用输入中已经固定的评分规则与逐题参考要点，不自行编造规则或唯一标准答案，不给录用结论。")
     prompt = boundary + goal + "\nJSON schema:\n" + json.dumps(schema.model_json_schema(), ensure_ascii=False)
-    return schema, prompt, json.dumps(data, ensure_ascii=False), validate
+    return schema, prompt, json.dumps(content_data, ensure_ascii=False), validate
 
 
 def policy_version(kind, data):

@@ -28,6 +28,17 @@ class FakeGateway:
         from app.model_gateway import PURPOSES
         assert kwargs.get("purpose") in PURPOSES
         data = json.loads(content)
+        if "report_groups" in data:
+            groups = data["report_groups"]
+            data = {**data,
+                    "questions": [{"id": turn["turn_id"], "text": turn["question"],
+                                   "main": group["main"], "follow": turn["follow"]}
+                                  for group in groups for turn in group["turns"]],
+                    "answers": [{"id": answer["answer_id"], "question_id": turn["turn_id"],
+                                 "text": "".join(span["text"] for span in answer["evidence_spans"]), "skipped": False}
+                                for group in groups for turn in group["turns"] for answer in turn["answers"]],
+                    "groups": [{"id": group["question_id"], "main": group["main"],
+                                "dimension_ids": group["dimension_ids"]} for group in groups]}
         self.calls.append(kwargs.get("purpose"))
         if self.block:
             self.started.set()
@@ -76,7 +87,7 @@ class FakeGateway:
                      "quote": data["answer"]["text"][:10] if follow else ""}
             if schema is ScoredFollowDecision:
                 value["reference_points"] = ["说明刚才做法的验证步骤和判断依据。"] if follow else []
-        elif schema in {ReportProposal, ScoredReportProposal}:
+        elif issubclass(schema, ReportProposal):
             qs = {q["id"]: q for q in data["questions"]}
             entries = []
             for q in data["questions"]:
@@ -89,7 +100,7 @@ class FakeGateway:
             value = {"summary": "这是本地状态机测试反馈，不用于专业能力验收。", "questions": entries,
                      "improvements": [{"question_id": first["question_id"], "answer_id": first["id"],
                                        "quote": first["text"][:20], "focus": "验证依据", "suggestion": "补充一项验证过程及观察结果。"}]}
-            if schema is ScoredReportProposal:
+            if issubclass(schema, ScoredReportProposal):
                 from app.scoring import is_abstention
                 ratings = []
                 for group in data["groups"]:
@@ -125,7 +136,7 @@ class FakeSpeech:
         self.release = Event()
         self.block = False
 
-    def transcribe(self, path):
+    def transcribe(self, path, *, terms=None):
         if self.block:
             self.started.set()
             self.release.wait(8)
